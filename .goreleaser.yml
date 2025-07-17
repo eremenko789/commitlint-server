@@ -3,7 +3,10 @@ before:
     - go mod tidy
 
 builds:
-  - env:
+  - id: cli
+    main: ./cmd/cli
+    binary: commitlint
+    env:
       - CGO_ENABLED=0
     goos:
       - linux
@@ -11,6 +14,19 @@ builds:
       - darwin
     ldflags:
       - -s -w -X github.com/conventionalcommit/commitlint/internal.version=v{{.Major}}.{{.Minor}}.{{.Patch}} -X github.com/conventionalcommit/commitlint/internal.commit={{.FullCommit}} -X github.com/conventionalcommit/commitlint/internal.buildTime={{.Date}}
+    flags:
+      - -tags=urfave_cli_no_docs
+  
+  - id: webhook-server
+    main: ./cmd/webhook-server
+    binary: commitlint-webhook-server
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    ldflags:
+      - -s -w
     flags:
       - -tags=urfave_cli_no_docs
 

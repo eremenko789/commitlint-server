@@ -37,31 +37,38 @@ func (e *LintExecutor) LintCommit(message string) (*LintResult, error) {
 	lintConfig, err := config.Parse(e.config.ConfigPath)
 	if err != nil {
 		// If config file doesn't exist, use defaults
-		lintConfig = config.DefaultConfig()
+		lintConfig = config.NewDefault()
 	}
 
 	// Create linter
-	linter := lint.New(lintConfig)
+	linter, err := config.NewLinter(lintConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create linter: %w", err)
+	}
 
 	// Lint the message
-	report := linter.Lint(message)
+	report, err := linter.ParseAndLint(message)
+	if err != nil {
+		return nil, fmt.Errorf("failed to lint message: %w", err)
+	}
 
 	// Convert report to result
+	issues := report.Issues()
 	result := &LintResult{
-		Valid:  report.Valid(),
-		Issues: make([]LintIssue, 0),
+		Valid:  len(issues) == 0,
+		Issues: make([]LintIssue, 0, len(issues)),
 	}
 
 	// Collect issues
-	for _, issue := range report.Issues() {
+	for _, issue := range issues {
 		level := "error"
-		if issue.Severity == lint.SeverityWarning {
+		if issue.Severity() == lint.SeverityWarn {
 			level = "warning"
 		}
 
 		result.Issues = append(result.Issues, LintIssue{
 			Level:   level,
-			Message: issue.Message,
+			Message: fmt.Sprintf("%s: %s", issue.RuleName(), issue.Description()),
 		})
 	}
 

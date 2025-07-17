@@ -7,6 +7,9 @@
 webhook-server.yml
 .env
 
+# Test files
+test-payload.json
+
 # IDE
 .idea
 .vscode

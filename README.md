@@ -2,6 +2,8 @@
 
 # commitlint
 
+📖 [Документация на русском языке](README_RU.md)
+
 commitlint checks if your commit message meets the [conventional commit format](https://www.conventionalcommits.org/en/v1.0.0/)
 
 ```
