@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"flag"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -13,6 +15,25 @@ import (
 )
 
 func main() {
+	// Parse command line flags
+	var healthCheck bool
+	flag.BoolVar(&healthCheck, "health", false, "Run health check")
+	flag.Parse()
+
+	// If health check flag is set, perform health check and exit
+	if healthCheck {
+		resp, err := http.Get("http://localhost:3000/health")
+		if err != nil {
+			os.Exit(1)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			os.Exit(1)
+		}
+		fmt.Println("OK")
+		os.Exit(0)
+	}
+
 	// Load configuration
 	config, err := webhook.LoadConfig()
 	if err != nil {

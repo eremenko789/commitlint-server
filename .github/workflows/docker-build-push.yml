@@ -7,12 +7,14 @@ on:
       - 'v*'
   pull_request:
     branches: [ main, master ]
+  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  docker:
+  build-and-push:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -20,14 +22,17 @@ jobs:
     strategy:
       matrix:
         include:
+          - dockerfile: Dockerfile
+            image: commitlint-webhook-server
+            platforms: linux/amd64,linux/arm64
           - dockerfile: Dockerfile.cli
             image: commitlint
-            context: .
+            platforms: linux/amd64,linux/arm64,linux/arm/v7
           - dockerfile: Dockerfile.webhook
-            image: commitlint-webhook-server
-            context: .
+            image: commitlint-webhook-server-alpine
+            platforms: linux/amd64,linux/arm64
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up QEMU
@@ -54,16 +59,41 @@ jobs:
             type=ref,event=pr
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
-            type=sha
+            type=semver,pattern={{major}}
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha,prefix={{branch}}-
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
-          context: ${{ matrix.context }}
+          context: .
           file: ${{ matrix.dockerfile }}
-          platforms: linux/amd64,linux/arm64
+          platforms: ${{ matrix.platforms }}
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          build-args: |
+            VERSION=${{ github.ref_name }}
+            COMMIT=${{ github.sha }}
+            BUILD_TIME=${{ github.event.head_commit.timestamp }}
+
+      - name: Export Docker image for artifacts
+        if: github.event_name == 'pull_request'
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          platforms: linux/amd64
+          push: false
+          tags: ${{ matrix.image }}:pr-${{ github.event.pull_request.number }}
+          outputs: type=docker,dest=/tmp/${{ matrix.image }}.tar
+
+      - name: Upload Docker image artifact
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-${{ matrix.image }}
+          path: /tmp/${{ matrix.image }}.tar
+          retention-days: 7
