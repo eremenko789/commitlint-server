@@ -329,8 +329,54 @@ MIT License
 
 На данный момент webhook сервер поддерживает только Gitea. Для поддержки других сервисов (GitHub, GitLab) необходимо реализовать соответствующие клиенты и обработчики webhook.
 
+## 🚀 GitHub Actions
+
+Проект использует GitHub Actions для автоматизации сборки и релизов:
+
+### Workflows
+
+1. **Build and Test** (`.github/workflows/build.yml`)
+   - Запускается при push и pull request
+   - Тестирует код
+   - Собирает бинарные файлы для разных платформ
+   - Проверяет конфигурацию GoReleaser
+
+2. **Release** (`.github/workflows/release.yml`)
+   - Запускается при создании тега версии (`v*`)
+   - Использует GoReleaser для создания релиза
+   - Создает бинарные файлы для всех платформ
+   - Публикует релиз на GitHub
+
+3. **Docker Build and Push** (`.github/workflows/docker.yml`)
+   - Запускается при push в main и создании тегов
+   - Собирает Docker образы для CLI и webhook сервера
+   - Публикует образы в GitHub Container Registry
+
+4. **Commit Lint** (`.github/workflows/commitlint.yml`)
+   - Запускается для всех pull request
+   - Проверяет коммиты на соответствие Conventional Commits
+
+### Создание релиза
+
+Для создания нового релиза:
+
+```bash
+# Создание тега версии
+git tag v1.0.0
+
+# Отправка тега на GitHub
+git push origin v1.0.0
+```
+
+GitHub Actions автоматически:
+- Соберет бинарные файлы для всех платформ
+- Создаст архивы с бинарными файлами и документацией
+- Опубликует Docker образы
+- Создаст черновик релиза на GitHub
+
 ## 🔗 Полезные ссылки
 
 - [Conventional Commits](https://www.conventionalcommits.org/)
 - [Gitea API Documentation](https://docs.gitea.io/en-us/api-usage/)
 - [Оригинальный commitlint для Node.js](https://commitlint.js.org/)
+- [GoReleaser Documentation](https://goreleaser.com/)

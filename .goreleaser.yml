@@ -31,15 +31,33 @@ builds:
       - -tags=urfave_cli_no_docs
 
 archives:
-  - replacements:
-      darwin: Darwin
-      linux: Linux
-      windows: Windows
-      386: i386
-      amd64: x86_64
+  - id: cli
+    builds:
+      - cli
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        format: zip
     files:
       - LICENSE.md
       - README.md
+      - README_RU.md
+      - .commitlintrc.yml
+      - src: webhook-server.yml.example
+        dst: webhook-server.yml.example
+  
+  - id: webhook-server
+    builds:
+      - webhook-server
+    name_template: "{{ .ProjectName }}-webhook-server_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - LICENSE.md
+      - README.md
+      - README_RU.md
+      - webhook-server.yml.example
+      - docker-compose.yml.example
+      - .env.example
+      - commitlint-webhook.service.example
 
 checksum:
   name_template: "{{ .ProjectName }}_v{{.Major}}.{{.Minor}}.{{.Patch}}_checksums.txt"
@@ -62,3 +80,8 @@ changelog:
 
 release:
   draft: true
+  name_template: "{{.ProjectName}} v{{.Version}}"
+  header: |
+    ## Release Notes
+
+    This release includes both the CLI tool and the webhook server for Gitea integration.

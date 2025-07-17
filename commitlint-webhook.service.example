@@ -1,0 +1,42 @@
+[Unit]
+Description=Commitlint Webhook Server for Gitea
+Documentation=https://github.com/conventionalcommit/commitlint
+After=network.target
+
+[Service]
+Type=simple
+User=commitlint
+Group=commitlint
+WorkingDirectory=/opt/commitlint
+
+# Path to the webhook server binary
+ExecStart=/opt/commitlint/commitlint-webhook-server -c /etc/commitlint/webhook-server.yml
+
+# Restart policy
+Restart=on-failure
+RestartSec=5
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/log/commitlint
+
+# Resource limits
+LimitNOFILE=65536
+MemoryLimit=512M
+
+# Environment variables (optional, can override config file)
+#Environment="WEBHOOK_SERVER_ADDRESS=:3000"
+#Environment="WEBHOOK_SECRET=your-secret-here"
+#Environment="GITEA_URL=https://gitea.example.com"
+#Environment="GITEA_TOKEN=your-token-here"
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=commitlint-webhook
+
+[Install]
+WantedBy=multi-user.target
