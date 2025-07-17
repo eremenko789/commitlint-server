@@ -1,0 +1,53 @@
+# Многоэтапная сборка для уменьшения размера образа
+FROM golang:1.23-alpine AS builder
+
+# Установка git (нужен для go mod)
+RUN apk add --no-cache git
+
+# Рабочая директория
+WORKDIR /app
+
+# Копирование go mod файлов
+COPY go.mod go.sum ./
+
+# Загрузка зависимостей
+RUN go mod download
+
+# Копирование исходного кода
+COPY . .
+
+# Сборка сервера
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o commitlint-server ./cmd/server
+
+# Финальный образ
+FROM alpine:latest
+
+# Установка необходимых пакетов
+RUN apk --no-cache add ca-certificates tzdata
+
+# Создание пользователя
+RUN addgroup -g 1000 -S commitlint && \
+    adduser -u 1000 -S commitlint -G commitlint
+
+# Рабочая директория
+WORKDIR /root/
+
+# Копирование бинарного файла
+COPY --from=builder /app/commitlint-server .
+
+# Создание директории для конфигурации
+RUN mkdir -p /etc/commitlint && \
+    chown -R commitlint:commitlint /etc/commitlint
+
+# Переключение на непривилегированного пользователя
+USER commitlint
+
+# Порт по умолчанию
+EXPOSE 8080
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD wget --quiet --tries=1 --spider http://localhost:8080/health || exit 1
+
+# Запуск сервера
+CMD ["./commitlint-server"]

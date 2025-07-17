@@ -12,6 +12,33 @@ type SeverityConfig struct {
 	Rules   map[string]Severity `yaml:"rules,omitempty"`
 }
 
+// ServerConfig represent webhook server configuration
+type ServerConfig struct {
+	// Server listening address
+	Address string `yaml:"address"`
+	
+	// Server listening port
+	Port int `yaml:"port"`
+	
+	// Webhook secret for verifying Gitea requests
+	WebhookSecret string `yaml:"webhook_secret"`
+	
+	// Gitea instance URL
+	GiteaURL string `yaml:"gitea_url"`
+	
+	// Gitea access token for API calls
+	GiteaToken string `yaml:"gitea_token"`
+	
+	// SSL certificate file path (optional)
+	CertFile string `yaml:"cert_file,omitempty"`
+	
+	// SSL private key file path (optional)
+	KeyFile string `yaml:"key_file,omitempty"`
+	
+	// Enable debug logging
+	Debug bool `yaml:"debug"`
+}
+
 // Config represent linter config
 type Config struct {
 	// MinVersion is the minimum version of commitlint required
@@ -29,6 +56,9 @@ type Config struct {
 
 	// Settings is rule name to rule settings
 	Settings map[string]RuleSetting `yaml:"settings"`
+	
+	// Server configuration for webhook server
+	Server ServerConfig `yaml:"server,omitempty"`
 }
 
 // GetRule returns RuleConfig for given rule name

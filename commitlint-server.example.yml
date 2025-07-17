@@ -1,0 +1,73 @@
+# Конфигурация commitlint сервера
+# Минимальная версия commitlint
+version: "v1.6.0"
+
+# Форматер результатов линтинга
+formatter: "default"
+
+# Включенные правила проверки
+rules:
+  - "type-enum"
+  - "type-case"
+  - "type-empty"
+  - "scope-case"
+  - "subject-case"
+  - "subject-empty"
+  - "subject-full-stop"
+  - "header-max-length"
+  - "body-leading-blank"
+  - "footer-leading-blank"
+
+# Настройки серьезности нарушений
+severity:
+  default: "error"
+  rules:
+    "header-max-length": "warn"
+
+# Настройки для конкретных правил
+settings:
+  type-enum:
+    argument:
+      - "feat"
+      - "fix"
+      - "docs"
+      - "style"
+      - "refactor"
+      - "perf"
+      - "test"
+      - "build"
+      - "ci"
+      - "chore"
+      - "revert"
+  header-max-length:
+    argument: 100
+  subject-case:
+    argument: "lower-case"
+
+# Конфигурация веб-сервера
+server:
+  # Адрес прослушивания (по умолчанию: 0.0.0.0)
+  address: "0.0.0.0"
+  
+  # Порт прослушивания (по умолчанию: 8080)
+  port: 8080
+  
+  # Секрет для проверки подлинности webhook'ов от Gitea
+  # Должен совпадать с секретом, настроенным в Gitea
+  webhook_secret: "your-webhook-secret-here"
+  
+  # URL вашего экземпляра Gitea
+  gitea_url: "https://git.example.com"
+  
+  # Токен доступа к API Gitea
+  # Должен иметь права на чтение репозиториев и запись статусов коммитов
+  gitea_token: "your-gitea-access-token-here"
+  
+  # SSL сертификат (опционально)
+  # cert_file: "/path/to/server.crt"
+  
+  # SSL приватный ключ (опционально)  
+  # key_file: "/path/to/server.key"
+  
+  # Включить отладочное логирование
+  debug: true

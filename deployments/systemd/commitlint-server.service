@@ -1,0 +1,34 @@
+[Unit]
+Description=Commitlint Webhook Server
+Documentation=https://github.com/conventionalcommit/commitlint
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=commitlint
+Group=commitlint
+ExecStart=/usr/local/bin/commitlint-server
+Restart=always
+RestartSec=10
+
+# Конфигурация
+Environment=COMMITLINT_CONFIG=/etc/commitlint/commitlint-server.yml
+
+# Безопасность
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/log/commitlint
+
+# Логирование
+StandardOutput=append:/var/log/commitlint/server.log
+StandardError=append:/var/log/commitlint/server.log
+
+# Ограничения ресурсов
+LimitNOFILE=65536
+LimitNPROC=4096
+
+[Install]
+WantedBy=multi-user.target
