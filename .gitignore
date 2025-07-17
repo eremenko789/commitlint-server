@@ -1,3 +1,20 @@
 # Bin Directory
 /bin
 /dist
+/build
+
+# Config files
+webhook-server.yml
+.env
+
+# IDE
+.idea
+.vscode
+
+# OS
+.DS_Store
+
+# Binaries
+*.exe
+commitlint
+commitlint-webhook-server

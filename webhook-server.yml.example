@@ -1,0 +1,26 @@
+# Webhook Server Configuration Example
+# Copy this file to webhook-server.yml and update with your values
+
+# HTTP Server settings
+server:
+  address: ":8080"              # Server address (host:port)
+  read_timeout: 30              # Read timeout in seconds
+  write_timeout: 30             # Write timeout in seconds
+
+# Gitea API settings
+gitea:
+  base_url: "https://gitea.example.com"  # Your Gitea instance URL
+  token: "your-gitea-api-token"          # API token with repo access
+  username: "commitlint-bot"             # Optional: username for the bot
+
+# Commitlint settings
+commitlint:
+  config_path: ".commitlintrc.yml"       # Path to commitlint config file
+
+# Webhook settings
+webhook:
+  secret: "your-webhook-secret"          # Webhook secret for signature verification
+  path: "/webhook"                       # Webhook endpoint path
+  events:                                # Gitea events to handle
+    - "pull_request"
+    - "pull_request_sync"

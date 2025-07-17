@@ -1,0 +1,25 @@
+# Build stage
+FROM golang:1.23-alpine AS builder
+
+RUN apk add --no-cache git make
+
+WORKDIR /build
+
+# Copy go mod files
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Build CLI
+RUN go build -ldflags="-s -w" -o commitlint ./cmd/cli
+
+# Final stage
+FROM alpine:latest
+
+RUN apk add --no-cache ca-certificates git
+
+COPY --from=builder /build/commitlint /usr/local/bin/commitlint
+
+ENTRYPOINT ["commitlint"]

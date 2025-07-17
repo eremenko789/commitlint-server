@@ -1,0 +1,35 @@
+# Build stage
+FROM golang:1.23-alpine AS builder
+
+RUN apk add --no-cache git make
+
+WORKDIR /build
+
+# Copy go mod files
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Build webhook server
+RUN go build -ldflags="-s -w" -o commitlint-webhook-server ./cmd/webhook-server
+
+# Final stage
+FROM alpine:latest
+
+RUN apk add --no-cache ca-certificates
+
+COPY --from=builder /build/commitlint-webhook-server /usr/local/bin/commitlint-webhook-server
+
+# Create config directory
+RUN mkdir -p /etc/commitlint
+
+# Expose webhook port
+EXPOSE 8080
+
+# Run as non-root user
+RUN adduser -D -u 1000 webhook
+USER webhook
+
+ENTRYPOINT ["commitlint-webhook-server"]
