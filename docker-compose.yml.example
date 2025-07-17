@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  commitlint-webhook:
+    image: commitlint-webhook-server:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.webhook
+    ports:
+      - "8080:8080"
+    environment:
+      - GITEA_BASE_URL=${GITEA_BASE_URL}
+      - GITEA_TOKEN=${GITEA_TOKEN}
+      - GITEA_USERNAME=${GITEA_USERNAME:-commitlint-bot}
+      - WEBHOOK_SECRET=${WEBHOOK_SECRET}
+    volumes:
+      - ./webhook-server.yml:/etc/commitlint/webhook-server.yml:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

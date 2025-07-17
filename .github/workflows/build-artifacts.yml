@@ -1,0 +1,182 @@
+name: Build Artifacts
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build-matrix:
+    strategy:
+      matrix:
+        include:
+          # Linux builds
+          - os: ubuntu-latest
+            goos: linux
+            goarch: amd64
+            suffix: ""
+          - os: ubuntu-latest
+            goos: linux
+            goarch: arm64
+            suffix: ""
+          # macOS builds
+          - os: macos-latest
+            goos: darwin
+            goarch: amd64
+            suffix: ""
+          - os: macos-latest
+            goos: darwin
+            goarch: arm64
+            suffix: ""
+          # Windows builds
+          - os: windows-latest
+            goos: windows
+            goarch: amd64
+            suffix: ".exe"
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Build CLI
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: 0
+        run: go build -v -ldflags="-s -w" -o commitlint-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.suffix }} ./cmd/cli
+
+      - name: Build Webhook Server
+        if: matrix.goos != 'windows'
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: 0
+        run: go build -v -ldflags="-s -w" -o commitlint-webhook-server-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.suffix }} ./cmd/webhook-server
+
+      - name: Create CLI artifact archive
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          mkdir -p dist/cli
+          cp commitlint-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.suffix }} dist/cli/commitlint${{ matrix.suffix }}
+          cp .commitlintrc.yml README.md README_RU.md LICENSE.md CONTRIBUTING.md dist/cli/
+          cd dist/cli
+          tar -czf ../../commitlint-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz *
+          cd ../..
+
+      - name: Create CLI artifact archive (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist\cli
+          Copy-Item commitlint-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.suffix }} dist\cli\commitlint${{ matrix.suffix }}
+          Copy-Item .commitlintrc.yml, README.md, README_RU.md, LICENSE.md, CONTRIBUTING.md dist\cli\
+          Compress-Archive -Path dist\cli\* -DestinationPath commitlint-${{ matrix.goos }}-${{ matrix.goarch }}.zip
+
+      - name: Create CLI artifact archive (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          mkdir -p dist/cli
+          cp commitlint-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.suffix }} dist/cli/commitlint${{ matrix.suffix }}
+          cp .commitlintrc.yml README.md README_RU.md LICENSE.md CONTRIBUTING.md dist/cli/
+          cd dist/cli
+          tar -czf ../../commitlint-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz *
+          cd ../..
+
+      - name: Create Webhook Server artifact archive
+        if: matrix.goos != 'windows' && matrix.os == 'ubuntu-latest'
+        run: |
+          mkdir -p dist/webhook
+          cp commitlint-webhook-server-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.suffix }} dist/webhook/commitlint-webhook-server${{ matrix.suffix }}
+          cp webhook-server.yml.example docker-compose.yml.example .env.example README.md README_RU.md LICENSE.md CONTRIBUTING.md dist/webhook/
+          cp commitlint-webhook.service.example dist/webhook/
+          cd dist/webhook
+          tar -czf ../../commitlint-webhook-server-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz *
+          cd ../..
+
+      - name: Create Webhook Server artifact archive (macOS)
+        if: matrix.goos != 'windows' && matrix.os == 'macos-latest'
+        run: |
+          mkdir -p dist/webhook
+          cp commitlint-webhook-server-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.suffix }} dist/webhook/commitlint-webhook-server${{ matrix.suffix }}
+          cp webhook-server.yml.example docker-compose.yml.example .env.example README.md README_RU.md LICENSE.md CONTRIBUTING.md dist/webhook/
+          cp commitlint-webhook.service.example dist/webhook/
+          cd dist/webhook
+          tar -czf ../../commitlint-webhook-server-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz *
+          cd ../..
+
+      - name: Upload CLI binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: commitlint-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: commitlint-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.suffix }}
+
+      - name: Upload CLI archive artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: commitlint-${{ matrix.goos }}-${{ matrix.goarch }}-archive
+          path: commitlint-${{ matrix.goos }}-${{ matrix.goarch }}.${{ matrix.os == 'windows-latest' && 'zip' || 'tar.gz' }}
+
+      - name: Upload Webhook Server binary artifact
+        if: matrix.goos != 'windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: commitlint-webhook-server-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: commitlint-webhook-server-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.suffix }}
+
+      - name: Upload Webhook Server archive artifact
+        if: matrix.goos != 'windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: commitlint-webhook-server-${{ matrix.goos }}-${{ matrix.goarch }}-archive
+          path: commitlint-webhook-server-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz
+
+  build-docker:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build CLI Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile.cli
+          platforms: linux/amd64,linux/arm64
+          push: false
+          tags: commitlint:latest
+          outputs: type=docker,dest=/tmp/commitlint-cli.tar
+
+      - name: Build Webhook Server Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile.webhook
+          platforms: linux/amd64,linux/arm64
+          push: false
+          tags: commitlint-webhook-server:latest
+          outputs: type=docker,dest=/tmp/commitlint-webhook.tar
+
+      - name: Upload CLI Docker image
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-image-cli
+          path: /tmp/commitlint-cli.tar
+
+      - name: Upload Webhook Server Docker image
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-image-webhook
+          path: /tmp/commitlint-webhook.tar

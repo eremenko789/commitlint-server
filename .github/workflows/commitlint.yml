@@ -1,0 +1,31 @@
+name: Commit Lint
+
+on:
+  pull_request:
+
+jobs:
+  commitlint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: Build commitlint
+        run: go build -o commitlint ./cmd/cli
+
+      - name: Get commit range
+        id: commits
+        run: |
+          echo "from=${{ github.event.pull_request.base.sha }}" >> $GITHUB_OUTPUT
+          echo "to=${{ github.event.pull_request.head.sha }}" >> $GITHUB_OUTPUT
+
+      - name: Lint commits
+        run: |
+          ./commitlint --from-hash ${{ steps.commits.outputs.from }} --to-hash ${{ steps.commits.outputs.to }}

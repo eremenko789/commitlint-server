@@ -2,8 +2,6 @@ module github.com/conventionalcommit/commitlint
 
 go 1.23.0
 
-toolchain go1.24.2
-
 require (
 	github.com/conventionalcommit/parser v0.8.0
 	github.com/urfave/cli/v2 v2.27.7
