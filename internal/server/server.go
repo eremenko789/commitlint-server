@@ -12,8 +12,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strconv"
-	"strings"
 	"syscall"
 	"time"
 
@@ -41,7 +39,7 @@ func Run() error {
 	}
 
 	// Create linter
-	linter, err := lint.NewLinter(conf)
+	linter, err := config.NewLinter(conf)
 	if err != nil {
 		return fmt.Errorf("ошибка создания линтера: %w", err)
 	}

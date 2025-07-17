@@ -54,9 +54,14 @@ func (s *Server) processPullRequest(webhook *PullRequestWebhook) {
 		}
 
 		// Lint the commit message
-		result := s.linter.Lint(commit.Commit.Message, commit.SHA)
+		result, err := s.linter.ParseAndLint(commit.Commit.Message)
+		if err != nil {
+			log.Printf("Ошибка линтинга коммита %s: %v", commit.SHA, err)
+			continue
+		}
 		
-		if result.Valid {
+		issues := result.Issues()
+		if len(issues) == 0 {
 			// Commit is valid
 			status = CommitStatus{
 				State:       "success",
@@ -67,34 +72,58 @@ func (s *Server) processPullRequest(webhook *PullRequestWebhook) {
 				log.Printf("✓ Коммит %s прошел проверку", commit.SHA[:8])
 			}
 		} else {
-			// Commit is invalid
-			allPassed = false
-			failedCommits = append(failedCommits, commit.SHA[:8])
-			totalErrors += len(result.Errors)
-			
-			// Build error description
-			var errorMessages []string
-			for _, err := range result.Errors {
-				errorMessages = append(errorMessages, err.Message)
+			// Check if there are any errors (not just warnings)
+			hasErrors := false
+			errorCount := 0
+			for _, issue := range issues {
+				if issue.Severity() == lint.SeverityError {
+					hasErrors = true
+					errorCount++
+				}
 			}
 			
-			description := fmt.Sprintf("Найдено ошибок: %d", len(result.Errors))
-			if len(errorMessages) > 0 {
-				description += " - " + strings.Join(errorMessages, "; ")
+			if hasErrors {
+				// Commit has errors
+				allPassed = false
+				failedCommits = append(failedCommits, commit.SHA[:8])
+				totalErrors += errorCount
+				
+				// Build error description
+				var errorMessages []string
+				for _, issue := range issues {
+					if issue.Severity() == lint.SeverityError {
+						errorMessages = append(errorMessages, issue.Description())
+					}
+				}
+				
+				description := fmt.Sprintf("Найдено ошибок: %d", errorCount)
+				if len(errorMessages) > 0 {
+					description += " - " + strings.Join(errorMessages, "; ")
+				}
+				
+				// Limit description length for API
+				if len(description) > 140 {
+					description = description[:137] + "..."
+				}
+				
+				status = CommitStatus{
+					State:       "failure",
+					Context:     "commitlint",
+					Description: description,
+				}
+				
+				log.Printf("✗ Коммит %s не прошел проверку: %s", commit.SHA[:8], description)
+			} else {
+				// Only warnings, treat as success
+				status = CommitStatus{
+					State:       "success",
+					Context:     "commitlint",
+					Description: fmt.Sprintf("Сообщение коммита соответствует правилам (предупреждений: %d)", len(issues)),
+				}
+				if s.config.Server.Debug {
+					log.Printf("✓ Коммит %s прошел проверку с предупреждениями", commit.SHA[:8])
+				}
 			}
-			
-			// Limit description length for API
-			if len(description) > 140 {
-				description = description[:137] + "..."
-			}
-			
-			status = CommitStatus{
-				State:       "failure",
-				Context:     "commitlint",
-				Description: description,
-			}
-			
-			log.Printf("✗ Коммит %s не прошел проверку: %s", commit.SHA[:8], description)
 		}
 
 		// Set final status
